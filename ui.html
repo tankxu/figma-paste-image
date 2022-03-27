@@ -1,0 +1,107 @@
+<style>
+  body {
+    margin: 5px;
+    font-family: sans-serif;
+    cursor: pointer;
+  }
+  p {
+    margin: 0;
+    line-height: 1.8;
+  }
+  body:hover #trigger {
+    color: #111;
+  }
+
+  body:hover #trigger.focus {
+    color: #fff;
+  }
+  #trigger {
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed;
+    border-color: #18a0fb;
+    background-color: rgb(24 160 251 / 10%);
+    color: #444;
+    box-sizing: border-box;
+  }
+  #trigger.focus {
+    background-color: #7b61ff;
+    border-color: #7b61ff;
+    color: #e2def7;
+  }
+  #trigger p.focus {
+    font-size: 36px;
+    font-weight: 600;
+  }
+</style>
+<div id="trigger">
+  <p class="focus">CLICK ME</p>
+  <p style="opacity: 0.5; font-weight: 300;">and <strong>Paste Image</strong></p>
+</div>
+<script>
+  const IMAGE_MIME_REGEX = /^image\/(p?jpeg|gif|png)$/i;
+  function _base64ToUint8Array(base64) {
+    const binary_string = window.atob(base64);
+    const len = binary_string.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary_string.charCodeAt(i);
+    }
+    return new Uint8Array(bytes.buffer);
+  }
+
+  const loadImage = function (file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      let base64Image = e.target.result;
+      let imageData = base64Image.split(",");
+      imageData = _base64ToUint8Array(imageData[1]);
+
+
+      const img = new Image();
+      img.src = base64Image;
+
+      img.onload = function () {
+        // access image size here
+        let imageObject = new Object()
+        imageObject.width = this.width;
+        imageObject.height = this.height;
+        imageObject.image = imageData;
+        parent.postMessage(
+          { pluginMessage: { type: "paste", imageObject } },
+          "*"
+        );
+      };
+    };
+    reader.readAsDataURL(file);
+  };
+
+  document.onpaste = function (e) {
+    const items = e.clipboardData.items;
+
+    for (let i = 0; i < items.length; i++) {
+      if (IMAGE_MIME_REGEX.test(items[i].type)) {
+        loadImage(items[i].getAsFile());
+        return;
+      }
+    }
+
+    e.PreventDefault();
+  };
+
+  const trigger = document.querySelector("#trigger");
+  const body = document.querySelector("body")
+
+  trigger.addEventListener("click", (event) => {
+    trigger.classList.add("focus");
+    body.style.margin = "0"
+    body.style.cursor = "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAATvSURBVHgB7VfLUhtHFL3d85JADOgVApIsWdhSSCUhxgSnsgpfEG9YZZffSBZ8SCr5kCxjZxEDycJeGRKEeSMJJI0GaTSPnG5mQBBXKq5KyVm4Yarpx9x77rnndg+MRt/Y0N8BpxG3IAjoSyIlBMJo1A0AhFN1bW1NBM9Gj+BWCuhde9uN/cu5/7IFr3Um1LmysmKYZrYYBD3V91WsORSoKjN4TL7kOA6RLn9lw4hU7HO5G+hyPVwI94jxALu0cLrZ7PZOT/debW1tOREQNQIA58re3snct99989OjR5+bBwf7lMlkyba7pGk6Bb5HfdeldDJJnU6HJicn6WB/nwqFO7S1vU2lUpFqOzXKvpeVQBl+VE2jVrtFqakkxeIx2tjYaP/4w/dfA8DTEP81gJ2dHXV+fv4jy7Ky689+Vc/Ozykej8uDIwipsrpdmpmepubZGU1NTdHBwQEdn5zQbm0X0dXp8PCIsicZsjoW6YZOnufjfZ/GxsbJwBjvxQPOqzC1QYIcsBABYABgLC4u319aWlLS6TSdwLCqauT0+5RMJalRb8jo9hH14sOHcn15+TN6+XKbHj/+ira2tunBpw/o8OgYzGWo1TqniYkJ6l30wIRKvu/T7GyObzxbFwCirFwzICaz2Uy10WiyTqdNdTg0dJ06lkXT9jQA1Mm+sKnRaEhWms0zurBtOj46IkXhdHR8TD6ibWJdpK3VapFpTpBldcHAGHqLJhITCCY1i7Fh2zYbZoCnUqlYea5cyWTSMKjQ+HiCunAwm8vTOdJx9+5dOS6VSmR3bcrlZiWQcrlMnHOamyuTBsZisZh8dN2ATkzo5wxATMrn8zIlMzPv3wGABACIo9iPLiPY4OMQVjYeMxC5Bso84kxIyYdhRW5SeNgDILzLyMVhzoQVRM9YEJaV6KEd0C72qHh0pEHXVYCaKhYKZZMuL6SrFPBqtZqcmZnNdO3epXMu8uZQvz+QanYGLhxxGqAXonS9gDj2+RgMPJc0gOo7rhw76DUw0Ec1aJoh97YhTAak0FfSNBPZ0LcTAVBNM1NMp1OJUjEfaj6gvb19Qmqk+mNGjHr9ntSFMwAoVZUMXUqYyTS4KFMBUEQtRBePj0GEFxBlStqUbDGKIX0lTPwSMSCsKOVyfs51Pba++TuU74AuIVRO9caZNCzyG0T0ho6FBm43AcQHDb3ehRSeBupNc1KeDe12W54f9yr3i6gQDecJixjQK9UPFxYWPpZ563S6KKFx9KiA6awsrUI+R2/Sart70mkXgq1W7qEybFTKqQzs1W6tAufqMAMq1Fl48uQpokX+QaEI13UHoFOVlD5//uIN3AdgQbDBZKr+/GMbNhUpXlEdhULxAwq/iq5SoBtGv1KpytzdMBVcUy52slDnYi6aH+7/6QnCytn8bdOK7Is3eSKRSOdyuS+q1flPXNdRPC/4242oKCwQF1aEjw99TfJwIJa4+JFj/8YaAIjXmapyr1arvVhfX/8Z0/Xow3AMh0fW87xJ8c5gMGAaSg/9lcrCcdRflslQE/PCltgTkTe8F39Hax6elnCOx4oiFTDFDaqi7Hiz2bwyIozibA/q9ToTJTm0dqOJtTBi6Nhnw/tuveeHIMRt6N2mepQfqe8+SP8/TVbCGvQT/tcyeud0WQWiF+ocqTjkTY7HX11dDV53uYyyvY3/E+kvx9M11y/Bw8IAAAAASUVORK5CYII=), auto"
+
+    trigger.innerHTML = '<p style="opacity: 0.5; font-weight: 300;">Press Cmd / Ctrl + V to</p><p class="focus">PASTE IMAGE</p>'
+  });
+</script>
